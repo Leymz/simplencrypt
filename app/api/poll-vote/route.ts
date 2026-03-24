@@ -67,7 +67,8 @@ export async function POST(req: NextRequest) {
     const mxePublicKey = await getMXEPublicKey(provider, program.programId);
     const votePrivateKey = x25519.utils.randomSecretKey();
     const votePublicKey = x25519.getPublicKey(votePrivateKey);
-    const sharedSecret = x25519.getSharedSecret(votePrivateKey, mxePublicKey)!;
+    // @ts-ignore
+    const sharedSecret = x25519.getSharedSecret(votePrivateKey, mxePublicKey);
     const cipher = new RescueCipher(sharedSecret);
 
     const voteNonce = randomBytes(16);
