@@ -96,6 +96,7 @@ export async function fetchDao(
 ): Promise<any> {
   const program = getProgram(provider);
   try {
+    // @ts-ignore
     return await program.account.daoAccount.fetch(daoPda);
   } catch {
     return null;
