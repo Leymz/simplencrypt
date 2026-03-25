@@ -9,12 +9,13 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en" suppressHydrationWarning>
+    <html lang="en" className="dark" suppressHydrationWarning>
       <body className="bg-[#F7F5FB] dark:bg-[#110D20] min-h-screen">
         <script dangerouslySetInnerHTML={{ __html: `
           (function() {
             var theme = localStorage.getItem('simplencrypt_theme');
-            if (theme === 'dark') document.documentElement.classList.add('dark');
+            if (theme === 'light') document.documentElement.classList.remove('dark');
+          else document.documentElement.classList.add('dark');
           })();
         `}} />
         <WalletContextProvider>{children}</WalletContextProvider>

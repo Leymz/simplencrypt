@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useWallet } from "@solana/wallet-adapter-react";
 import { useRouter } from "next/navigation";
+import { BarChart3, Zap, Plus, ChevronRight, Trash2, Archive, ArchiveRestore, Lock } from "lucide-react";
 import { NavBar, PoweredFooter } from "@/components/ui";
 import { supabase } from "@/lib/supabase";
 import Link from "next/link";
@@ -25,9 +26,7 @@ export default function DashboardPage() {
   }, [connected, router, wallet]);
 
   const loadData = async () => {
-    if (wallet) {
-      await supabase.from("members").upsert({ wallet }, { onConflict: "wallet" });
-    }
+    if (wallet) await supabase.from("members").upsert({ wallet }, { onConflict: "wallet" });
     const { data: daoData } = await supabase.from("daos").select("*").order("created_at", { ascending: false });
     if (daoData) {
       for (const d of daoData) {
@@ -52,18 +51,16 @@ export default function DashboardPage() {
     await supabase.from("daos").delete().eq("id", id);
     setDaos(daos.filter(d => d.id !== id));
   };
-
   const archiveDao = async (id: number, e: React.MouseEvent) => {
     e.preventDefault(); e.stopPropagation();
     await supabase.from("daos").update({ archived: true }).eq("id", id);
     setDaos(daos.map(d => d.id === id ? { ...d, archived: true } : d));
   };
-
-  const restoreDao = async (id: number) => {
+  const restoreDao = async (id: number, e: React.MouseEvent) => {
+    e.preventDefault(); e.stopPropagation();
     await supabase.from("daos").update({ archived: false }).eq("id", id);
     setDaos(daos.map(d => d.id === id ? { ...d, archived: false } : d));
   };
-
   const deletePoll = async (id: number, e: React.MouseEvent) => {
     e.preventDefault(); e.stopPropagation();
     if (!confirm("Delete this poll?")) return;
@@ -71,223 +68,231 @@ export default function DashboardPage() {
     setPolls(polls.filter(p => p.id !== id));
   };
 
-  const activeDaos = daos.filter((d: any) => !d.archived);
-  const archivedDaos = daos.filter((d: any) => d.archived);
+  const activeDaos = daos.filter(d => !d.archived);
+  const archivedDaos = daos.filter(d => d.archived);
   const myDaos = activeDaos.filter(d => d.creator === wallet);
   const exploreDaos = activeDaos.filter(d => d.creator !== wallet);
-  const activePolls = polls.filter((p: any) => p.status === "Active");
+  const activePolls = polls.filter(p => p.status === "Active");
   const myPolls = activePolls.filter(p => p.creator === wallet);
   const trendingPolls = activePolls.filter(p => p.creator !== wallet);
 
   return (
-    <div className="min-h-screen bg-[#F7F5FB] dark:bg-[#110D20]">
+    <div className="min-h-screen bg-[hsl(264,40%,6%)]">
       <NavBar />
-      <div className="px-10 py-10">
-        <div className="mb-8 rounded-2xl overflow-hidden shadow-[0_8px_30px_rgba(139,92,246,0.12)]">
-          <img src="/promo.png" alt="simplEncrypt" className="w-full block rounded-2xl h-44 object-cover object-center" />
+      <div className="container mx-auto px-6 py-8 max-w-5xl">
+        {/* Action cards */}
+        <div className="grid sm:grid-cols-2 gap-4 mb-10">
+          <Link href="/create-dao" className="no-underline dark-card rounded-2xl p-6 text-left group transition-all active:scale-[0.98]">
+            <div className="flex items-center gap-3 mb-3">
+              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[hsl(263,90%,66%)]/10">
+                <BarChart3 className="h-5 w-5 text-[hsl(263,90%,66%)]" />
+              </div>
+              <ChevronRight className="h-4 w-4 text-white/30 ml-auto opacity-0 group-hover:opacity-100 transition-opacity" />
+            </div>
+            <h3 className="text-base font-semibold text-white mb-1">Create DAO</h3>
+            <p className="text-xs text-white/40">Full governance with proposals & encrypted voting</p>
+          </Link>
+          <Link href="/create-poll" className="no-underline dark-card rounded-2xl p-6 text-left group transition-all active:scale-[0.98]">
+            <div className="flex items-center gap-3 mb-3">
+              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[hsl(263,75%,72%)]/15">
+                <Zap className="h-5 w-5 text-[hsl(263,75%,72%)]" />
+              </div>
+              <ChevronRight className="h-4 w-4 text-white/30 ml-auto opacity-0 group-hover:opacity-100 transition-opacity" />
+            </div>
+            <h3 className="text-base font-semibold text-white mb-1">Quick Poll</h3>
+            <p className="text-xs text-white/40">One-click encrypted vote — no DAO needed</p>
+          </Link>
         </div>
 
         {/* Tab switcher */}
-        <div className="flex items-center justify-between mb-8">
-          <div className="flex bg-white dark:bg-[#1A1530] rounded-xl border border-[#E5E1EE] dark:border-[#2A2445] p-1">
-            <button onClick={() => setTab("daos")} className={`px-6 py-2.5 rounded-lg text-[14px] font-semibold transition-all border-none cursor-pointer ${tab === "daos" ? "bg-gradient-to-r from-brand-purple to-brand-purple-light text-white shadow-[0_2px_10px_rgba(139,92,246,0.2)]" : "bg-transparent text-[#8A8494] hover:text-[#4A4555] dark:hover:text-[#A09BB0]"}`}>
-              🏛️ DAOs
+        <div className="flex items-center justify-between mb-6">
+          <div className="flex rounded-xl dark-panel p-1 gap-1">
+            <button onClick={() => setTab("daos")} className={`px-5 py-2 rounded-lg text-sm font-semibold transition-all border-none cursor-pointer ${tab === "daos" ? "btn-primary-gradient" : "bg-transparent text-white/40 hover:text-white/60"}`}>
+              DAOs
             </button>
-            <button onClick={() => setTab("polls")} className={`px-6 py-2.5 rounded-lg text-[14px] font-semibold transition-all border-none cursor-pointer ${tab === "polls" ? "bg-gradient-to-r from-brand-purple to-brand-purple-light text-white shadow-[0_2px_10px_rgba(139,92,246,0.2)]" : "bg-transparent text-[#8A8494] hover:text-[#4A4555] dark:hover:text-[#A09BB0]"}`}>
-              ⚡ Polls
+            <button onClick={() => setTab("polls")} className={`px-5 py-2 rounded-lg text-sm font-semibold transition-all border-none cursor-pointer ${tab === "polls" ? "btn-primary-gradient" : "bg-transparent text-white/40 hover:text-white/60"}`}>
+              Polls
             </button>
           </div>
-          <Link href={tab === "daos" ? "/create-dao" : "/create-poll"} className="px-5 py-2.5 rounded-xl bg-gradient-to-r from-brand-purple to-brand-purple-light text-white text-[13px] font-semibold no-underline shadow-[0_3px_14px_rgba(139,92,246,0.18)]">
-            {tab === "daos" ? "+ Create DAO" : "+ New Poll"}
+          <Link href={tab === "daos" ? "/create-dao" : "/create-poll"} className="text-xs text-[hsl(263,90%,66%)] hover:underline flex items-center gap-0.5 no-underline">
+            <Plus className="h-3 w-3" /> {tab === "daos" ? "New DAO" : "New Poll"}
           </Link>
         </div>
 
         {loading ? (
-          <div className="text-center py-20 text-[#8A8494]">Loading...</div>
+          <div className="text-center py-20 text-white/30">Loading...</div>
         ) : tab === "daos" ? (
           <>
             {/* Your DAOs */}
-            <div className="mb-8">
+            <section className="mb-10">
               <div className="flex items-center gap-2 mb-4">
-                <h2 className="text-[18px] font-bold text-[#1A1625] dark:text-[#EEEAF6]">Your DAOs</h2>
-                {myDaos.length > 0 && <span className="text-[11px] font-semibold text-brand-purple px-2.5 py-0.5 rounded-md bg-brand-purple-bg dark:bg-purple-500/10">{myDaos.length}</span>}
+                <h2 className="text-lg font-semibold text-white">Your DAOs</h2>
+                {myDaos.length > 0 && <span className="rounded-full bg-[hsl(263,90%,66%)]/10 px-2 py-0.5 text-xs font-medium text-[hsl(263,90%,66%)]">{myDaos.length}</span>}
               </div>
               {myDaos.length === 0 ? (
-                <div className="text-center py-12 bg-white dark:bg-[#1A1530] rounded-2xl border border-[#E5E1EE] dark:border-[#2A2445]">
-                  <div className="text-4xl mb-3">🏛️</div>
-                  <h3 className="text-base font-bold text-[#1A1625] dark:text-[#EEEAF6] mb-1">No DAOs Yet</h3>
-                  <p className="text-sm text-[#8A8494] mb-4">Create your first DAO to start private governance</p>
-                  <Link href="/create-dao" className="px-5 py-2 rounded-xl bg-brand-purple text-white text-sm font-semibold no-underline">Create Your First DAO</Link>
+                <div className="dark-card rounded-2xl p-10 text-center">
+                  <BarChart3 className="h-10 w-10 text-white/15 mx-auto mb-3" />
+                  <h3 className="text-sm font-semibold text-white mb-1">No DAOs Yet</h3>
+                  <p className="text-xs text-white/30 mb-4">Create your first DAO to start private governance</p>
+                  <Link href="/create-dao" className="btn-primary-gradient rounded-xl px-5 py-2 text-xs font-semibold no-underline inline-block">Create Your First DAO</Link>
                 </div>
               ) : (
-                <div className="grid gap-3">
-                  {myDaos.map((d) => (
-                    <Link key={d.id} href={`/dao?id=${d.id}`} className="no-underline p-5 rounded-2xl bg-white dark:bg-[#1A1530] border border-[#E5E1EE] dark:border-[#2A2445] cursor-pointer transition-all hover:border-brand-purple-light hover:shadow-[0_3px_18px_rgba(139,92,246,0.06)] flex justify-between items-center group">
-                      <div className="flex items-center gap-4">
-                        <img src="/banner.jpg" alt="" className="w-12 h-12 rounded-xl object-cover" />
-                        <div>
-                          <h3 className="text-[16px] font-bold text-[#1A1625] dark:text-[#EEEAF6]">{d.name}</h3>
-                          <p className="text-xs text-[#8A8494] mt-0.5">{d.description}</p>
-                        </div>
+                <div className="space-y-3">
+                  {myDaos.map(d => (
+                    <Link key={d.id} href={`/dao?id=${d.id}`} className="no-underline w-full dark-card rounded-2xl p-4 flex items-center gap-4 text-left group active:scale-[0.98] block">
+                      <img src="/banner.jpg" alt="" className="h-12 w-12 rounded-xl object-cover" />
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-semibold text-white">{d.name}</p>
+                        <p className="text-xs text-white/40 truncate">{d.description}</p>
                       </div>
-                      <div className="flex gap-4 items-center">
-                        <div className="text-center">
-                          <div className="text-[17px] font-bold text-brand-purple">{d.proposalCount || 0}</div>
-                          <div className="text-[10px] text-[#8A8494] uppercase tracking-wide font-mono">Proposals</div>
+                      <div className="text-right shrink-0 flex items-center gap-3">
+                        <div className="opacity-0 group-hover:opacity-100 transition-opacity flex gap-1">
+                          <button onClick={(e) => archiveDao(d.id, e)} className="p-1.5 rounded-lg hover:bg-white/5 text-white/30 transition-colors bg-transparent border-none cursor-pointer">
+                            <Archive className="h-3.5 w-3.5" />
+                          </button>
+                          <button onClick={(e) => deleteDao(d.id, e)} className="p-1.5 rounded-lg hover:bg-red-500/10 text-white/30 hover:text-red-400 transition-colors bg-transparent border-none cursor-pointer">
+                            <Trash2 className="h-3.5 w-3.5" />
+                          </button>
                         </div>
-                        <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                          <button onClick={(e) => archiveDao(d.id, e)} className="text-[#D0CCD8] hover:text-amber-400 bg-transparent border-none cursor-pointer text-sm p-1">📦</button>
-                          <button onClick={(e) => deleteDao(d.id, e)} className="text-[#D0CCD8] hover:text-red-400 bg-transparent border-none cursor-pointer text-sm p-1">🗑</button>
-                        </div>
-                        <span className="text-[#D0CCD8] text-lg">→</span>
+                        <span className="text-xs font-mono-data text-white/40">{d.proposalCount} proposals</span>
+                        <ChevronRight className="h-4 w-4 text-white/30" />
                       </div>
                     </Link>
                   ))}
                 </div>
               )}
-            </div>
+            </section>
 
             {/* Explore DAOs */}
             {exploreDaos.length > 0 && (
-              <div className="mb-8">
+              <section className="mb-10">
                 <div className="flex items-center gap-2 mb-4">
-                  <h2 className="text-[18px] font-bold text-[#1A1625] dark:text-[#EEEAF6]">Explore DAOs</h2>
-                  <span className="text-[11px] font-semibold text-[#8A8494] px-2.5 py-0.5 rounded-md bg-[#F0EDF6] dark:bg-[#1A1530]">{exploreDaos.length}</span>
+                  <h2 className="text-lg font-semibold text-white">Explore DAOs</h2>
+                  <span className="rounded-full bg-white/10 px-2 py-0.5 text-xs font-medium text-white/40">{exploreDaos.length}</span>
                 </div>
-                <div className="grid gap-3">
-                  {exploreDaos.map((d) => (
-                    <Link key={d.id} href={`/dao?id=${d.id}`} className="no-underline p-5 rounded-2xl bg-white dark:bg-[#1A1530] border border-[#E5E1EE] dark:border-[#2A2445] cursor-pointer transition-all hover:border-brand-purple-light hover:shadow-[0_3px_18px_rgba(139,92,246,0.06)] flex justify-between items-center">
-                      <div className="flex items-center gap-4">
-                        <img src="/banner.jpg" alt="" className="w-12 h-12 rounded-xl object-cover" />
-                        <div>
-                          <h3 className="text-[16px] font-bold text-[#1A1625] dark:text-[#EEEAF6]">{d.name}</h3>
-                          <p className="text-xs text-[#8A8494] mt-0.5">{d.description}</p>
-                        </div>
+                <div className="space-y-3">
+                  {exploreDaos.map(d => (
+                    <Link key={d.id} href={`/dao?id=${d.id}`} className="no-underline w-full dark-card rounded-2xl p-4 flex items-center gap-4 text-left group active:scale-[0.98] block">
+                      <img src="/banner.jpg" alt="" className="h-12 w-12 rounded-xl object-cover" />
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-semibold text-white">{d.name}</p>
+                        <p className="text-xs text-white/40 truncate">{d.description}</p>
                       </div>
-                      <div className="flex gap-4 items-center">
-                        <div className="text-center">
-                          <div className="text-[17px] font-bold text-brand-purple">{d.proposalCount || 0}</div>
-                          <div className="text-[10px] text-[#8A8494] uppercase tracking-wide font-mono">Proposals</div>
-                        </div>
-                        <span className="text-[#D0CCD8] text-lg">→</span>
+                      <div className="flex items-center gap-3">
+                        <span className="text-xs font-mono-data text-white/40">{d.proposalCount} proposals</span>
+                        <ChevronRight className="h-4 w-4 text-white/30" />
                       </div>
                     </Link>
                   ))}
                 </div>
-              </div>
+              </section>
             )}
 
             {/* Archived */}
             {archivedDaos.length > 0 && (
-              <div className="mb-8">
-                <h2 className="text-[14px] font-semibold text-[#8A8494] mb-3 uppercase tracking-wide">Archived</h2>
-                <div className="grid gap-2">
-                  {archivedDaos.map((d) => {
-                    const isCreator = d.creator === wallet;
-                    return (
-                      <div key={d.id} className="p-4 rounded-xl bg-[#F0EDF6] dark:bg-[#1A1530] border border-[#E5E1EE] dark:border-[#2A2445] flex justify-between items-center opacity-60 group">
-                        <div className="flex items-center gap-4">
-                          <img src="/banner.jpg" alt="" className="w-10 h-10 rounded-lg object-cover grayscale" />
-                          <div>
-                            <h3 className="text-[14px] font-bold text-[#4A4555] dark:text-[#A09BB0]">{d.name}</h3>
-                            <p className="text-[11px] text-[#8A8494]">{d.description}</p>
-                          </div>
-                        </div>
-                        {isCreator && (
-                          <div className="flex gap-3 opacity-0 group-hover:opacity-100 transition-opacity">
-                            <button onClick={() => restoreDao(d.id)} className="text-xs text-brand-purple bg-transparent border-none cursor-pointer font-semibold">Restore</button>
-                            <button onClick={(e) => deleteDao(d.id, e)} className="text-xs text-red-400 bg-transparent border-none cursor-pointer font-semibold">Delete</button>
-                          </div>
-                        )}
+              <section className="mb-10">
+                <h2 className="text-lg font-semibold text-white mb-4">Archived</h2>
+                <div className="space-y-3 opacity-50">
+                  {archivedDaos.map(d => (
+                    <div key={d.id} className="dark-card rounded-2xl p-4 flex items-center gap-4 grayscale group">
+                      <img src="/banner.jpg" alt="" className="h-12 w-12 rounded-xl object-cover" />
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-semibold text-white">{d.name}</p>
+                        <p className="text-xs text-white/40 truncate">{d.description}</p>
                       </div>
-                    );
-                  })}
+                      {d.creator === wallet && (
+                        <div className="opacity-0 group-hover:opacity-100 transition-opacity flex gap-2">
+                          <button onClick={(e) => restoreDao(d.id, e)} className="p-1.5 rounded-lg hover:bg-white/5 text-white/30 transition-colors bg-transparent border-none cursor-pointer"><ArchiveRestore className="h-3.5 w-3.5" /></button>
+                          <button onClick={(e) => deleteDao(d.id, e)} className="p-1.5 rounded-lg hover:bg-red-500/10 text-white/30 hover:text-red-400 transition-colors bg-transparent border-none cursor-pointer"><Trash2 className="h-3.5 w-3.5" /></button>
+                        </div>
+                      )}
+                    </div>
+                  ))}
                 </div>
-              </div>
+              </section>
             )}
           </>
         ) : (
           <>
             {/* Your Polls */}
-            <div className="mb-8">
+            <section className="mb-10">
               <div className="flex items-center gap-2 mb-4">
-                <h2 className="text-[18px] font-bold text-[#1A1625] dark:text-[#EEEAF6]">Your Polls</h2>
-                {myPolls.length > 0 && <span className="text-[11px] font-semibold text-brand-purple px-2.5 py-0.5 rounded-md bg-brand-purple-bg dark:bg-purple-500/10">{myPolls.length}</span>}
+                <h2 className="text-lg font-semibold text-white">Your Polls</h2>
+                {myPolls.length > 0 && <span className="rounded-full bg-[hsl(263,90%,66%)]/10 px-2 py-0.5 text-xs font-medium text-[hsl(263,90%,66%)]">{myPolls.length}</span>}
               </div>
               {myPolls.length === 0 ? (
-                <div className="text-center py-12 bg-white dark:bg-[#1A1530] rounded-2xl border border-[#E5E1EE] dark:border-[#2A2445]">
-                  <div className="text-4xl mb-3">⚡</div>
-                  <h3 className="text-base font-bold text-[#1A1625] dark:text-[#EEEAF6] mb-1">No Polls Yet</h3>
-                  <p className="text-sm text-[#8A8494] mb-4">Create a quick encrypted poll</p>
-                  <Link href="/create-poll" className="px-5 py-2 rounded-xl bg-brand-purple text-white text-sm font-semibold no-underline">Create Your First Poll</Link>
+                <div className="dark-card rounded-2xl p-10 text-center">
+                  <Zap className="h-10 w-10 text-white/15 mx-auto mb-3" />
+                  <h3 className="text-sm font-semibold text-white mb-1">No Polls Yet</h3>
+                  <p className="text-xs text-white/30 mb-4">Create a quick encrypted poll</p>
+                  <Link href="/create-poll" className="btn-primary-gradient rounded-xl px-5 py-2 text-xs font-semibold no-underline inline-block">Create Your First Poll</Link>
                 </div>
               ) : (
-                <div className="grid grid-cols-2 gap-3">
-                  {myPolls.map((p: any) => (
-                    <Link key={p.id} href={`/poll?id=${p.id}`} className="no-underline p-5 rounded-2xl bg-white dark:bg-[#1A1530] border border-[#E5E1EE] dark:border-[#2A2445] hover:border-brand-purple-light transition block group">
+                <div className="grid sm:grid-cols-2 gap-4">
+                  {myPolls.map(p => (
+                    <Link key={p.id} href={`/poll?id=${p.id}`} className="no-underline dark-card rounded-2xl p-5 text-left group active:scale-[0.98] block">
                       <div className="flex justify-between items-start mb-2">
-                        <h3 className="text-[14px] font-bold text-[#1A1625] dark:text-[#EEEAF6] flex-1 leading-snug">{p.question}</h3>
-                        <button onClick={(e) => deletePoll(p.id, e)} className="opacity-0 group-hover:opacity-100 text-[#D0CCD8] hover:text-red-400 bg-transparent border-none cursor-pointer text-sm p-1 ml-2">🗑</button>
+                        <p className="text-sm font-medium text-white line-clamp-2 flex-1">{p.question}</p>
+                        <button onClick={(e) => deletePoll(p.id, e)} className="opacity-0 group-hover:opacity-100 p-1 rounded-lg hover:bg-red-500/10 text-white/30 hover:text-red-400 transition bg-transparent border-none cursor-pointer ml-2"><Trash2 className="h-3.5 w-3.5" /></button>
                       </div>
-                      <div className="flex justify-between text-[11px] text-[#8A8494] mb-2">
-                        <span>{p.option_a} vs {p.option_b}</span>
-                        <span>{p.votes || 0} votes</span>
+                      <p className="text-xs text-white/40 mb-3">{p.option_a || "Yes"} vs {p.option_b || "No"}</p>
+                      <div className="flex items-center gap-2">
+                        <div className="flex-1 h-1.5 rounded-full bg-white/10 overflow-hidden">
+                          <div className="h-full rounded-full bg-[hsl(263,90%,66%)]" style={{ width: `${Math.round(((p.votes || 0) / (p.total || 200)) * 100)}%` }} />
+                        </div>
+                        <span className="text-xs font-mono-data text-white/40">{p.votes || 0}</span>
                       </div>
-                      <div className="h-1.5 rounded bg-[#F0EDF6] dark:bg-[#2A2445] overflow-hidden">
-                        <div className="h-full rounded bg-gradient-to-r from-brand-purple to-brand-purple-light" style={{ width: `${Math.round(((p.votes || 0) / (p.total || 200)) * 100)}%` }} />
-                      </div>
-                      {p.onchain_id && <div className="text-[10px] text-emerald-600 dark:text-emerald-400 font-mono mt-2">On-Chain</div>}
+                      {p.onchain_id && <div className="text-[10px] text-emerald-400 font-mono-data mt-2">On-Chain</div>}
                     </Link>
                   ))}
                 </div>
               )}
-            </div>
+            </section>
 
             {/* Trending Polls */}
             {trendingPolls.length > 0 && (
-              <div className="mb-8">
+              <section className="mb-10">
                 <div className="flex items-center gap-2 mb-4">
-                  <h2 className="text-[18px] font-bold text-[#1A1625] dark:text-[#EEEAF6]">Trending Polls</h2>
-                  <span className="text-[11px] font-semibold text-[#8A8494] px-2.5 py-0.5 rounded-md bg-[#F0EDF6] dark:bg-[#1A1530]">{trendingPolls.length}</span>
+                  <h2 className="text-lg font-semibold text-white">Trending Polls</h2>
+                  <span className="rounded-full bg-white/10 px-2 py-0.5 text-xs font-medium text-white/40">{trendingPolls.length}</span>
                 </div>
-                <div className="grid grid-cols-2 gap-3">
-                  {trendingPolls.map((p: any) => (
-                    <Link key={p.id} href={`/poll?id=${p.id}`} className="no-underline p-5 rounded-2xl bg-white dark:bg-[#1A1530] border border-[#E5E1EE] dark:border-[#2A2445] hover:border-brand-purple-light transition block">
-                      <h3 className="text-[14px] font-bold text-[#1A1625] dark:text-[#EEEAF6] mb-2 leading-snug">{p.question}</h3>
-                      <div className="flex justify-between text-[11px] text-[#8A8494] mb-2">
-                        <span>{p.option_a} vs {p.option_b}</span>
-                        <span>{p.votes || 0} votes</span>
+                <div className="grid sm:grid-cols-2 gap-4">
+                  {trendingPolls.map(p => (
+                    <Link key={p.id} href={`/poll?id=${p.id}`} className="no-underline dark-card rounded-2xl p-5 text-left group active:scale-[0.98] block">
+                      <p className="text-sm font-medium text-white mb-2 line-clamp-2">{p.question}</p>
+                      <p className="text-xs text-white/40 mb-3">{p.option_a || "Yes"} vs {p.option_b || "No"}</p>
+                      <div className="flex items-center gap-2">
+                        <div className="flex-1 h-1.5 rounded-full bg-white/10 overflow-hidden">
+                          <div className="h-full rounded-full bg-[hsl(263,90%,66%)]" style={{ width: `${Math.round(((p.votes || 0) / (p.total || 200)) * 100)}%` }} />
+                        </div>
+                        <span className="text-xs font-mono-data text-white/40">{p.votes || 0}</span>
                       </div>
-                      <div className="h-1.5 rounded bg-[#F0EDF6] dark:bg-[#2A2445] overflow-hidden">
-                        <div className="h-full rounded bg-gradient-to-r from-brand-purple to-brand-purple-light" style={{ width: `${Math.round(((p.votes || 0) / (p.total || 200)) * 100)}%` }} />
-                      </div>
-                      {p.onchain_id && <div className="text-[10px] text-emerald-600 dark:text-emerald-400 font-mono mt-2">On-Chain</div>}
+                      {p.onchain_id && <div className="text-[10px] text-emerald-400 font-mono-data mt-2">On-Chain</div>}
                     </Link>
                   ))}
                 </div>
-              </div>
+              </section>
             )}
           </>
         )}
 
         {/* Stats */}
-        <div className="mt-8 pt-8 border-t border-[#E5E1EE] dark:border-[#2A2445]">
-          <div className="grid grid-cols-4">
-            {[
-              { v: String(totalVotes), l: "Encrypted Votes" },
-              { v: String(activeDaos.length), l: "Active DAOs" },
-              { v: String(activePolls.length), l: "Quick Polls" },
-              { v: String(totalMembers), l: "Members" },
-            ].map((s, i) => (
-              <div key={i} className="text-center py-7">
-                <div className="text-4xl font-bold text-brand-purple font-mono tracking-tight">{s.v}</div>
-                <div className="text-[11px] text-[#8A8494] mt-2 uppercase tracking-[1.5px] font-semibold">{s.l}</div>
-              </div>
-            ))}
-          </div>
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 border-t border-white/10 pt-8 mb-4">
+          {[
+            { label: "ENCRYPTED VOTES", value: String(totalVotes) },
+            { label: "ACTIVE DAOS", value: String(activeDaos.length) },
+            { label: "QUICK POLLS", value: String(activePolls.length) },
+            { label: "MEMBERS", value: String(totalMembers) },
+          ].map(s => (
+            <div key={s.label} className="text-center py-4">
+              <div className="font-mono-data text-2xl font-semibold text-[hsl(263,90%,66%)] mb-1">{s.value}</div>
+              <div className="text-[10px] text-white/30 tracking-[0.15em] uppercase">{s.label}</div>
+            </div>
+          ))}
         </div>
+
+        <PoweredFooter />
       </div>
-      <PoweredFooter />
     </div>
   );
 }

@@ -1,18 +1,19 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { useSearchParams } from "next/navigation";
+import { useSearchParams, useRouter } from "next/navigation";
 import { useWallet } from "@solana/wallet-adapter-react";
-import { PoweredFooter, StatusBadge } from "@/components/ui";
+import { Plus, Lock, ChevronRight, Trash2, Archive, ArchiveRestore } from "lucide-react";
+import { NavBar, PoweredFooter } from "@/components/ui";
 import { supabase } from "@/lib/supabase";
 import Link from "next/link";
 
 export default function DaoPage() {
   const params = useSearchParams();
+  const router = useRouter();
   const daoId = params.get("id") || "1";
   const { publicKey } = useWallet();
   const wallet = publicKey?.toBase58() || "";
-
   const [proposals, setProposals] = useState<any[]>([]);
   const [dao, setDao] = useState<any>({ name: "DAO", description: "", creator: "" });
   const [loading, setLoading] = useState(true);
@@ -28,225 +29,182 @@ export default function DaoPage() {
   };
 
   const isDaoCreator = dao.creator === wallet;
+  const deleteProposal = async (id: number, e: React.MouseEvent) => { e.preventDefault(); e.stopPropagation(); if (!confirm("Delete?")) return; await supabase.from("proposals").delete().eq("id", id); setProposals(proposals.filter(p => p.id !== id)); };
+  const archiveProposal = async (id: number, e: React.MouseEvent) => { e.preventDefault(); e.stopPropagation(); await supabase.from("proposals").update({ status: "Archived" }).eq("id", id); setProposals(proposals.map(p => p.id === id ? { ...p, status: "Archived" } : p)); };
+  const restoreProposal = async (id: number, e: React.MouseEvent) => { e.preventDefault(); e.stopPropagation(); await supabase.from("proposals").update({ status: "Active" }).eq("id", id); setProposals(proposals.map(p => p.id === id ? { ...p, status: "Active" } : p)); };
 
-  const deleteProposal = async (id: number, e: React.MouseEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    if (!confirm("Delete this proposal permanently?")) return;
-    await supabase.from("proposals").delete().eq("id", id);
-    setProposals(proposals.filter(p => p.id !== id));
-  };
-
-  const archiveProposal = async (id: number, e: React.MouseEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    await supabase.from("proposals").update({ status: "Archived" }).eq("id", id);
-    setProposals(proposals.map(p => p.id === id ? { ...p, status: "Archived" } : p));
-  };
-
-  const restoreProposal = async (id: number, e: React.MouseEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    await supabase.from("proposals").update({ status: "Active" }).eq("id", id);
-    setProposals(proposals.map(p => p.id === id ? { ...p, status: "Active" } : p));
-  };
-
-  const active = proposals.filter((p) => p.status === "Active");
-  const computing = proposals.filter((p) => p.status === "Computing");
-  const finalized = proposals.filter((p) => p.status === "Finalized");
-  const archived = proposals.filter((p) => p.status === "Archived");
+  const active = proposals.filter(p => p.status === "Active");
+  const computing = proposals.filter(p => p.status === "Computing");
+  const finalized = proposals.filter(p => p.status === "Finalized");
+  const archived = proposals.filter(p => p.status === "Archived");
   const other = [...computing, ...finalized];
   const totalVotes = proposals.reduce((a: number, p: any) => a + (p.votes || 0), 0);
 
+  const StatusBadge = ({ status }: { status: string }) => {
+    const cls = status === "Active" ? "status-active" : status === "Computing" ? "status-computing" : status === "Finalized" ? "status-finalized" : "bg-white/10 text-white/40";
+    return (
+      <span className={`${cls} rounded-full px-2.5 py-0.5 text-[10px] font-medium flex items-center gap-1 shrink-0`}>
+        {(status === "Active" || status === "Computing") && <span className={`h-1.5 w-1.5 rounded-full bg-current ${status === "Computing" ? "animate-pulse" : ""}`} />}
+        {status}
+      </span>
+    );
+  };
+
   return (
-    <div className="min-h-screen bg-[#F7F5FB] dark:bg-[#110D20]">
-      <div className="bg-white dark:bg-[#140F25] border-b border-[#E5E1EE] dark:border-[#2A2445] px-8 py-3 flex justify-between items-center">
-        <div className="flex items-center gap-3">
-          <Link href="/dashboard" className="text-[17px] text-[#4A4555] dark:text-[#A09BB0] no-underline px-1 py-0.5 rounded hover:bg-[#F0EDF6] dark:hover:bg-[#1A1530] transition">←</Link>
-          <Link href="/dashboard" className="flex items-center gap-2 no-underline">
-            <img src="/logo.png" alt="" className="w-8 h-8 rounded-lg object-cover" />
-            <span className="font-brand text-[17px] text-[#1A1625] dark:text-[#EEEAF6]">simpl<span className="font-bold text-brand-purple">Encrypt</span></span>
+    <div className="min-h-screen bg-[hsl(264,40%,6%)]">
+      <NavBar />
+      {/* Banner */}
+      <div className="relative h-40 overflow-hidden">
+        <img src="/banner.jpg" alt="" className="w-full h-full object-cover" />
+        <div className="absolute inset-0 bg-gradient-to-t from-[hsl(264,40%,6%)] via-[hsl(264,40%,6%)]/60 to-transparent" />
+        <div className="absolute bottom-4 left-0 right-0 container mx-auto px-6 max-w-5xl flex items-end justify-between">
+          <div className="flex items-center gap-3">
+            <img src="/banner.jpg" alt="" className="h-12 w-12 rounded-xl border-2 border-white/20 object-cover" />
+            <div>
+              <h1 className="text-white text-xl font-bold">{dao.name}</h1>
+              <p className="text-white/50 text-xs">{dao.description}</p>
+            </div>
+          </div>
+          <Link href={`/create-proposal?daoId=${daoId}`} className="btn-primary-gradient rounded-xl px-4 py-2 text-xs font-semibold flex items-center gap-1.5 no-underline">
+            <Plus className="h-3.5 w-3.5" /> New Proposal
           </Link>
-        </div>
-        <div className="px-3 py-1.5 rounded-lg bg-[#F0EDF6] dark:bg-[#1A1530] text-xs font-medium text-[#4A4555] dark:text-[#A09BB0] font-mono">
-          {wallet ? `${wallet.slice(0,4)}...${wallet.slice(-4)}` : ""}
         </div>
       </div>
 
-      <div className="px-10 py-10">
-        <div className="rounded-2xl overflow-hidden mb-7 relative h-40">
-          <img src="/banner.jpg" alt="" className="w-full h-full object-cover brightness-[0.85]" />
-          <div className="absolute inset-0 bg-gradient-to-r from-[rgba(26,22,37,0.7)] via-[rgba(26,22,37,0.3)] to-transparent" />
-          <div className="absolute bottom-0 left-0 right-0 px-7 py-5 flex justify-between items-end">
-            <div className="flex gap-4 items-end">
-              <img src="/banner.jpg" alt="" className="w-14 h-14 rounded-xl object-cover border-[3px] border-white shadow-lg" />
-              <div>
-                <h1 className="text-[22px] font-bold text-white mb-0.5 drop-shadow">{dao.name}</h1>
-                <p className="text-xs text-white/70">{dao.description}</p>
-              </div>
-            </div>
-            <Link href={`/create-proposal?daoId=${daoId}`} className="px-5 py-2.5 rounded-xl bg-gradient-to-r from-brand-purple to-brand-purple-light text-white text-xs font-semibold no-underline shadow-[0_3px_14px_rgba(139,92,246,0.3)]">
-              + New Proposal
-            </Link>
-          </div>
-        </div>
-
-        <div className="grid grid-cols-3 gap-3 mb-7">
+      <div className="container mx-auto px-6 py-8 max-w-5xl">
+        {/* Stats */}
+        <div className="grid grid-cols-3 gap-4 mb-8">
           {[
-            { v: proposals.filter(p => p.status !== "Archived").length, l: "Proposals" },
-            { v: totalVotes, l: "Encrypted Votes" },
-            { v: "MPC", l: "Arcium" },
-          ].map((s, i) => (
-            <div key={i} className="text-center py-4 bg-white dark:bg-[#1A1530] border border-[#E5E1EE] dark:border-[#2A2445] rounded-xl">
-              <div className="text-lg font-bold text-brand-purple font-mono">{s.v}</div>
-              <div className="text-[10px] text-[#8A8494] uppercase tracking-wide font-mono mt-1">{s.l}</div>
+            { label: "Proposals", value: String(proposals.filter(p => p.status !== "Archived").length) },
+            { label: "Encrypted Votes", value: String(totalVotes) },
+            { label: "Arcium", value: "MPC", isBadge: true },
+          ].map(s => (
+            <div key={s.label} className="dark-card rounded-2xl p-4 text-center">
+              <div className={`font-mono-data text-lg font-semibold ${s.isBadge ? "text-[hsl(263,75%,72%)]" : "text-[hsl(263,90%,66%)]"} mb-0.5`}>{s.value}</div>
+              <div className="text-[10px] text-white/30 uppercase tracking-wider">{s.label}</div>
             </div>
           ))}
         </div>
 
         {loading ? (
-          <div className="text-center py-20 text-[#8A8494]">Loading...</div>
+          <div className="text-center py-20 text-white/30">Loading...</div>
         ) : proposals.filter(p => p.status !== "Archived").length === 0 ? (
-          <div className="text-center py-16 bg-white dark:bg-[#1A1530] rounded-2xl border border-[#E5E1EE] dark:border-[#2A2445]">
-            <div className="text-5xl mb-4">📋</div>
-            <h3 className="text-lg font-bold text-[#1A1625] dark:text-[#EEEAF6] mb-2">No Proposals Yet</h3>
-            <p className="text-sm text-[#8A8494] mb-6">Create the first proposal for this DAO</p>
-            <Link href={`/create-proposal?daoId=${daoId}`} className="px-6 py-2.5 rounded-xl bg-brand-purple text-white text-sm font-semibold no-underline">Create First Proposal</Link>
+          <div className="dark-card rounded-2xl p-10 text-center">
+            <Lock className="h-10 w-10 text-white/15 mx-auto mb-3" />
+            <h3 className="text-sm font-semibold text-white mb-1">No Proposals Yet</h3>
+            <p className="text-xs text-white/30 mb-4">Create the first proposal for this DAO</p>
+            <Link href={`/create-proposal?daoId=${daoId}`} className="btn-primary-gradient rounded-xl px-5 py-2 text-xs font-semibold no-underline inline-block">Create First Proposal</Link>
           </div>
         ) : null}
 
+        {/* Active */}
         {active.length > 0 && (
-          <>
-            <div className="flex items-center gap-2 mb-3.5">
-              <h2 className="text-[16px] font-bold text-[#1A1625] dark:text-[#EEEAF6]">Active Proposals</h2>
-              <span className="text-[11px] font-semibold text-brand-purple px-2.5 py-0.5 rounded-md bg-brand-purple-bg dark:bg-purple-500/10">{active.length}</span>
-            </div>
-            <div className="grid gap-2.5 mb-8">
-              {active.map((p: any) => {
-                const isProposalCreator = p.creator === wallet;
+          <section className="mb-8">
+            <h2 className="text-base font-semibold text-white mb-4">Active Proposals</h2>
+            <div className="space-y-3">
+              {active.map(p => {
+                const isCreator = p.creator === wallet || isDaoCreator;
                 return (
-                  <Link key={p.id} href={`/proposal?daoId=${daoId}&id=${p.id}`} className="no-underline p-5 rounded-[14px] bg-white dark:bg-[#1A1530] border border-[#E5E1EE] dark:border-[#2A2445] transition hover:border-brand-purple-light block group">
-                    <div className="flex justify-between items-start mb-2.5">
-                      <h3 className="text-[15px] font-bold text-[#1A1625] dark:text-[#EEEAF6] flex-1">{p.title}</h3>
-                      <div className="flex items-center gap-2">
+                  <Link key={p.id} href={`/proposal?daoId=${daoId}&id=${p.id}`} className="no-underline w-full dark-card rounded-2xl p-5 text-left group active:scale-[0.98] block">
+                    <div className="flex items-start justify-between mb-2">
+                      <h3 className="text-sm font-semibold text-white">{p.title}</h3>
+                      <div className="flex items-center gap-2 shrink-0 ml-3">
                         <StatusBadge status={p.status} />
-                        {(isDaoCreator || isProposalCreator) && (
-                          <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                            <button onClick={(e) => archiveProposal(p.id, e)} className="text-[#D0CCD8] hover:text-amber-400 bg-transparent border-none cursor-pointer text-sm p-1" title="Archive">📦</button>
-                            <button onClick={(e) => deleteProposal(p.id, e)} className="text-[#D0CCD8] hover:text-red-400 bg-transparent border-none cursor-pointer text-sm p-1" title="Delete">🗑</button>
+                        {isCreator && (
+                          <div className="opacity-0 group-hover:opacity-100 transition-opacity flex gap-1">
+                            <button onClick={(e) => archiveProposal(p.id, e)} className="p-1 rounded-lg hover:bg-white/5 text-white/30 bg-transparent border-none cursor-pointer"><Archive className="h-3.5 w-3.5" /></button>
+                            <button onClick={(e) => deleteProposal(p.id, e)} className="p-1 rounded-lg hover:bg-red-500/10 text-white/30 hover:text-red-400 bg-transparent border-none cursor-pointer"><Trash2 className="h-3.5 w-3.5" /></button>
                           </div>
                         )}
                       </div>
                     </div>
-                    <p className="text-[12.5px] text-[#8A8494] mb-3.5 leading-relaxed">{p.description}</p>
-                    <div>
-                      <div className="flex justify-between mb-1.5">
-                        <span className="text-xs font-semibold text-[#4A4555] dark:text-[#A09BB0]">{p.votes || 0} of {p.total || 200} wallets voted</span>
-                        <span className="text-xs font-bold text-brand-purple">{Math.round(((p.votes || 0) / (p.total || 200)) * 100)}%</span>
+                    <p className="text-xs text-white/40 mb-3">{p.description}</p>
+                    <div className="flex items-center gap-2">
+                      <div className="flex-1 h-1.5 rounded-full bg-white/10 overflow-hidden">
+                        <div className="h-full rounded-full bg-[hsl(263,90%,66%)]" style={{ width: `${Math.round(((p.votes || 0) / (p.total || 200)) * 100)}%` }} />
                       </div>
-                      <div className="h-2 rounded bg-[#F0EDF6] dark:bg-[#2A2445] overflow-hidden">
-                        <div className="h-full rounded bg-gradient-to-r from-brand-purple to-brand-purple-light" style={{ width: `${Math.round(((p.votes || 0) / (p.total || 200)) * 100)}%` }} />
-                      </div>
-                      <div className="text-[11px] text-[#9C96AA] mt-1.5">🔒 Individual votes encrypted until deadline</div>
+                      <span className="text-xs font-mono-data text-white/40">{p.votes || 0}/{p.total || 200}</span>
+                      <Lock className="h-3 w-3 text-white/20" />
                     </div>
                   </Link>
                 );
               })}
             </div>
-          </>
+          </section>
         )}
 
+        {/* Past & Computing */}
         {other.length > 0 && (
-          <>
-            <div className="flex items-center gap-2 mb-3.5">
-              <h2 className="text-[16px] font-bold text-[#1A1625] dark:text-[#EEEAF6]">Past & Computing</h2>
-              <span className="text-[11px] font-semibold text-[#8A8494] px-2.5 py-0.5 rounded-md bg-[#F0EDF6] dark:bg-[#1A1530]">{other.length}</span>
-            </div>
-            <div className="grid gap-2.5 mb-8">
-              {other.map((p: any) => {
-                const isProposalCreator = p.creator === wallet;
+          <section className="mb-8">
+            <h2 className="text-base font-semibold text-white mb-4">Past & Computing</h2>
+            <div className="space-y-3">
+              {other.map(p => {
+                const isCreator = p.creator === wallet || isDaoCreator;
                 return (
-                  <Link key={p.id} href={`/proposal?daoId=${daoId}&id=${p.id}`} className={`no-underline p-5 rounded-[14px] bg-white dark:bg-[#1A1530] border border-[#E5E1EE] dark:border-[#2A2445] transition hover:border-brand-purple-light block group ${p.status === "Computing" ? "opacity-[0.85]" : ""}`}>
-                    <div className="flex justify-between items-start mb-2.5">
-                      <h3 className="text-[15px] font-bold text-[#1A1625] dark:text-[#EEEAF6] flex-1">{p.title}</h3>
-                      <div className="flex items-center gap-2">
+                  <div key={p.id} className="dark-card rounded-2xl p-5 group">
+                    <div className="flex items-start justify-between mb-2">
+                      <h3 className="text-sm font-semibold text-white">{p.title}</h3>
+                      <div className="flex items-center gap-2 shrink-0 ml-3">
                         <StatusBadge status={p.status} />
-                        {(isDaoCreator || isProposalCreator) && (
-                          <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                            <button onClick={(e) => archiveProposal(p.id, e)} className="text-[#D0CCD8] hover:text-amber-400 bg-transparent border-none cursor-pointer text-sm p-1" title="Archive">📦</button>
-                            <button onClick={(e) => deleteProposal(p.id, e)} className="text-[#D0CCD8] hover:text-red-400 bg-transparent border-none cursor-pointer text-sm p-1" title="Delete">🗑</button>
+                        {isCreator && (
+                          <div className="opacity-0 group-hover:opacity-100 transition-opacity flex gap-1">
+                            <button onClick={(e) => archiveProposal(p.id, e)} className="p-1 rounded-lg hover:bg-white/5 text-white/30 bg-transparent border-none cursor-pointer"><Archive className="h-3.5 w-3.5" /></button>
+                            <button onClick={(e) => deleteProposal(p.id, e)} className="p-1 rounded-lg hover:bg-red-500/10 text-white/30 hover:text-red-400 bg-transparent border-none cursor-pointer"><Trash2 className="h-3.5 w-3.5" /></button>
                           </div>
                         )}
                       </div>
                     </div>
-                    <p className="text-[12.5px] text-[#8A8494] mb-3.5 leading-relaxed">{p.description}</p>
+                    <p className="text-xs text-white/40 mb-3">{p.description}</p>
                     {p.status === "Finalized" && (
-                      <div>
-                        <div className="flex justify-between mb-1.5">
-                          <span className="text-xs font-semibold text-[#4A4555] dark:text-[#A09BB0]">Final — {p.votes} votes</span>
-                          <span className="text-xs font-bold text-emerald-600">✅ ZKP Verified</span>
+                      <div className="flex items-center gap-2">
+                        <div className="flex-1 h-2 rounded-full bg-white/10 overflow-hidden flex">
+                          <div className="h-full bg-[hsl(263,90%,66%)] rounded-l-full" style={{ width: `${Math.round(((p.yes_votes || 0) / (p.votes || 1)) * 100)}%` }} />
+                          <div className="h-full bg-white/20 rounded-r-full" style={{ width: `${Math.round(((p.no_votes || 0) / (p.votes || 1)) * 100)}%` }} />
                         </div>
-                        <div className="flex h-7 rounded-lg overflow-hidden">
-                          <div className="bg-gradient-to-r from-brand-purple to-brand-purple-light flex items-center justify-center text-[11px] font-bold text-white min-w-[40px]" style={{ width: `${Math.round(((p.yes_votes || 0) / (p.votes || 1)) * 100)}%` }}>Yes {Math.round(((p.yes_votes || 0) / (p.votes || 1)) * 100)}%</div>
-                          <div className="flex-1 bg-[#E5E1EE] dark:bg-[#2A2445] flex items-center justify-center text-[11px] font-bold text-[#4A4555] dark:text-[#A09BB0] min-w-[40px]">No {Math.round(((p.no_votes || 0) / (p.votes || 1)) * 100)}%</div>
-                        </div>
+                        <span className="text-xs font-mono-data text-[hsl(263,90%,66%)]">{Math.round(((p.yes_votes || 0) / (p.votes || 1)) * 100)}%</span>
+                        <span className="text-xs font-mono-data text-white/40">{Math.round(((p.no_votes || 0) / (p.votes || 1)) * 100)}%</span>
                       </div>
                     )}
                     {p.status === "Computing" && (
-                      <div className="flex items-center gap-2 text-[11px] font-semibold text-amber-600">
-                        <div className="w-2.5 h-2.5 border-2 border-amber-300 border-t-amber-600 rounded-full animate-spin" />
-                        MPC Computing...
-                      </div>
-                    )}
-                  </Link>
-                );
-              })}
-            </div>
-          </>
-        )}
-
-        {archived.length > 0 && (
-          <div className="mt-4">
-            <h2 className="text-[14px] font-semibold text-[#8A8494] mb-3 uppercase tracking-wide">Archived</h2>
-            <div className="grid gap-2">
-              {archived.map((p: any) => {
-                const isProposalCreator = p.creator === wallet;
-                return (
-                  <div key={p.id} className="p-4 rounded-xl bg-[#F0EDF6] dark:bg-[#1A1530] border border-[#E5E1EE] dark:border-[#2A2445] flex justify-between items-center opacity-60 group">
-                    <div>
-                      <h3 className="text-[14px] font-bold text-[#4A4555] dark:text-[#A09BB0]">{p.title}</h3>
-                      <p className="text-[11px] text-[#8A8494] mt-0.5">{p.description}</p>
-                    </div>
-                    {(isDaoCreator || isProposalCreator) && (
-                      <div className="flex gap-3 opacity-0 group-hover:opacity-100 transition-opacity">
-                        <button onClick={(e) => restoreProposal(p.id, e)} className="text-xs text-brand-purple bg-transparent border-none cursor-pointer font-semibold">Restore</button>
-                        <button onClick={(e) => deleteProposal(p.id, e)} className="text-xs text-red-400 bg-transparent border-none cursor-pointer font-semibold">Delete</button>
+                      <div className="flex items-center gap-2 text-xs font-mono-data text-amber-400">
+                        <span className="h-2 w-2 rounded-full bg-amber-400 animate-pulse" /> MPC Computing...
                       </div>
                     )}
                   </div>
                 );
               })}
             </div>
-          </div>
+          </section>
         )}
 
-        <div className="mt-10 pt-7 border-t border-[#E5E1EE] dark:border-[#2A2445]">
-          <div className="grid grid-cols-4">
-            {[
-              { v: proposals.filter(p => p.status !== "Archived").length, l: "Total Proposals" },
-              { v: active.length, l: "Active Now" },
-              { v: totalVotes, l: "Encrypted Votes" },
-              { v: finalized.length, l: "Finalized" },
-            ].map((s, i) => (
-              <div key={i} className="text-center py-6">
-                <div className="text-3xl font-bold text-brand-purple font-mono tracking-tight">{s.v}</div>
-                <div className="text-[10px] text-[#8A8494] mt-1.5 uppercase tracking-[1.5px] font-semibold">{s.l}</div>
-              </div>
-            ))}
-          </div>
-        </div>
+        {/* Archived */}
+        {archived.length > 0 && (
+          <section className="mb-8">
+            <h2 className="text-base font-semibold text-white mb-4">Archived</h2>
+            <div className="space-y-3 opacity-50">
+              {archived.map(p => {
+                const isCreator = p.creator === wallet || isDaoCreator;
+                return (
+                  <div key={p.id} className="dark-card rounded-2xl p-4 flex items-center justify-between group">
+                    <div>
+                      <h3 className="text-sm font-semibold text-white">{p.title}</h3>
+                      <p className="text-xs text-white/40">{p.description}</p>
+                    </div>
+                    {isCreator && (
+                      <div className="opacity-0 group-hover:opacity-100 transition-opacity flex gap-2">
+                        <button onClick={(e) => restoreProposal(p.id, e)} className="p-1.5 rounded-lg hover:bg-white/5 text-white/30 bg-transparent border-none cursor-pointer"><ArchiveRestore className="h-3.5 w-3.5" /></button>
+                        <button onClick={(e) => deleteProposal(p.id, e)} className="p-1.5 rounded-lg hover:bg-red-500/10 text-white/30 hover:text-red-400 bg-transparent border-none cursor-pointer"><Trash2 className="h-3.5 w-3.5" /></button>
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          </section>
+        )}
+
+        <PoweredFooter />
       </div>
-      <PoweredFooter />
     </div>
   );
 }
