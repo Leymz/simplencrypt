@@ -5,6 +5,10 @@ import "./globals.css";
 export const metadata: Metadata = {
   title: "simplEncrypt — Private DAO Voting",
   description: "Private DAO governance powered by Arcium MPC on Solana",
+  icons: {
+    icon: "/logo.png",
+    apple: "/logo.png",
+  },
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
