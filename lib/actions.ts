@@ -112,7 +112,8 @@ export async function fetchProposal(
 ): Promise<any> {
   const program = getProgram(provider);
   try {
-    return await program.account.proposalAccount.fetch(proposalPda);
+    // @ts-ignore
+      return await program.account.proposalAccount.fetch(proposalPda);
   } catch {
     return null;
   }
